@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -18,7 +19,10 @@ class AuthController extends Controller
                 ? redirect('/admin')
                 : redirect('/petugas');
         }
-        return back()->withErrors('Login gagal');
+
+        return back()->withErrors([
+            'login' => 'Email atau password salah'
+        ]);
     }
 
     public function logout()
