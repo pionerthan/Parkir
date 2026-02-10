@@ -4,62 +4,87 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ParkirTransaksi;
+use Carbon\Carbon;
 
 class PetugasController extends Controller
 {
-    /**
-     * Dashboard petugas
-     */
     public function index()
     {
         return view('petugas.index', [
-            'parkir' => ParkirTransaksi::where('status', 'IN')->get(),
+            'checkin'  => ParkirTransaksi::where('status', 'IN')->get(),
+            'checkout' => ParkirTransaksi::where('status', 'OUT')->get(),
+            'riwayat'  => ParkirTransaksi::where('status', 'DONE')->latest()->limit(10)->get(),
         ]);
     }
 
     /**
-     * Proses check-in kendaraan
+     * TAP KARTU MASUK
      */
-    public function checkin(Request $r)
+    public function checkin(Request $request)
     {
-        // Cegah kendaraan double parkir
-        if (ParkirTransaksi::where('card_id', $r->card_id)
+        $request->validate([
+            'card_id' => 'required'
+        ]);
+
+        // Cegah double tap
+        $exists = ParkirTransaksi::where('card_id', $request->card_id)
             ->where('status', 'IN')
-            ->exists()) {
-            return back()->with('error', 'Kendaraan sudah parkir');
+            ->first();
+
+        if ($exists) {
+            return back()->with('error', 'Kartu sudah check-in');
         }
 
         ParkirTransaksi::create([
-            'card_id'       => $r->card_id,
-            'checkin_time'  => now(),
-            'status'        => 'IN',
+            'card_id'      => $request->card_id,
+            'checkin_time' => now(),
+            'status'       => 'IN',
         ]);
 
         return back()->with('success', 'Check-in berhasil');
     }
 
     /**
-     * Proses check-out kendaraan
+     * TAP KARTU KELUAR
      */
-    public function checkout(Request $r)
+    public function checkout(Request $request)
     {
-        $trx = ParkirTransaksi::where('card_id', $r->card_id)
+        $data = ParkirTransaksi::where('card_id', $request->card_id)
             ->where('status', 'IN')
-            ->first();
+            ->firstOrFail();
 
-        if (!$trx) {
-            return back()->with('error', 'Data parkir tidak ditemukan');
-        }
+        $checkoutTime = now();
+        $hours = ceil(
+            Carbon::parse($data->checkin_time)->diffInMinutes($checkoutTime) / 60
+        );
 
-        $durasi = now()->diffInHours($trx->checkin_time);
+        $tarifPerJam = 3000;
 
-        $trx->update([
-            'checkout_time' => now(),
-            'duration'      => $durasi,
-            'fee'           => max(1, $durasi) * 2000,
-            'status'        => 'DONE',
+        $data->update([
+            'checkout_time' => $checkoutTime,
+            'duration'      => $hours,
+            'fee'           => $hours * $tarifPerJam,
+            'status'        => 'OUT',
         ]);
 
-        return back()->with('success', 'Check-out berhasil');
+        // SIMULASI BUKA PALANG
+        // nanti diganti trigger ke ESP32
+        // Http::post('http://esp32-ip/open-gate');
+
+        return back()->with('success', 'Checkout & palang terbuka');
+    }
+
+    /**
+     * SETELAH PALANG TERBUKA → PINDAH KE RIWAYAT
+     */
+    public function selesai($id)
+    {
+        ParkirTransaksi::where('id', $id)
+            ->where('status', 'OUT')
+            ->update([
+                'status' => 'DONE'
+            ]);
+
+        return back()->with('success', 'Kendaraan keluar');
     }
 }

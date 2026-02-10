@@ -5,15 +5,18 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PetugasController;
 
 
-Route::get('/', function () {
-    return redirect('/login');
-});
+
+Route::get('/', fn () => redirect('/login'));
 
 
 Route::middleware('guest')->group(function () {
+
     Route::get('/login', [AuthController::class, 'form'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.process');
+
+    Route::post('/login', [AuthController::class, 'login'])
+        ->name('login.process');
 });
+
 
 
 Route::post('/logout', [AuthController::class, 'logout'])
@@ -21,17 +24,17 @@ Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 
+
 Route::middleware(['auth', 'role:petugas'])
     ->prefix('petugas')
-    ->name('petugas.')
     ->group(function () {
 
-        Route::get('/', [PetugasController::class, 'index'])
-            ->name('dashboard');
+        Route::get('/', [PetugasController::class, 'index']);
 
-        Route::post('/checkin', [PetugasController::class, 'checkin'])
-            ->name('checkin');
+        Route::post('/checkin', [PetugasController::class, 'checkin']);
 
-        Route::post('/checkout', [PetugasController::class, 'checkout'])
-            ->name('checkout');
+        Route::post('/checkout', [PetugasController::class, 'checkout']);
+
+        Route::post('/selesai/{id}', [PetugasController::class, 'selesai']);
+
     });

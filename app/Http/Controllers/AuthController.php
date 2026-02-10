@@ -12,17 +12,29 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $r)
+    public function login(Request $request)
     {
-        if (Auth::attempt($r->only('email','password'))) {
-            return auth()->user()->role === 'owner'
-                ? redirect('/admin')
-                : redirect('/petugas');
+        $credentials = $request->only('email', 'password');
+
+        if (!Auth::attempt($credentials)) {
+            return back()->with('error', 'Login gagal');
         }
 
-        return back()->withErrors([
-            'login' => 'Email atau password salah'
-        ]);
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+
+        if ($user->role === 'petugas') {
+            return redirect('/petugas');
+        }
+
+        if ($user->role === 'owner') {
+            return redirect('/owner');
+        }
+
+        Auth::logout();
+
+        return redirect('/login');
     }
 
     public function logout()

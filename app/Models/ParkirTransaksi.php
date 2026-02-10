@@ -14,6 +14,7 @@ class ParkirTransaksi extends Model
         'checkout_time',
         'duration',
         'fee',
-        'status'
+        'status',
     ];
 }
+
